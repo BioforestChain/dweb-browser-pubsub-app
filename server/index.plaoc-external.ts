@@ -5,14 +5,19 @@ import {
   IpcEvent,
   $IpcEvent,
   $Ipc,
-  streamReadAllBuffer,
 } from '@dweb-browser/js-process'
 import manifest from '../manifest.json'
 
 const app = new Router()
+const prefixPath = `/${manifest.id}`
 
 app.use(async (event) => {
   console.log('pubsub external:=>', event, event.ipcRequest)
+  const { method, pathname } = event
+
+  if (!isPubSubReq(method, pathname)) {
+    return Response.json({ success: false, message: 'invalid request' })
+  }
 
   // TODO 发送者mmid应该从event.ipcRequest.ipc.remote拿，但remote是http.std.dweb，需要dweb-browser修复
   // 目前暂时从header: X-Dweb-Host取
@@ -20,7 +25,7 @@ app.use(async (event) => {
 
   // TODO 需要可配置
   const netMmid: $MMID = 'netmodule.bagen.com.dweb'
-  const netDomain = 'c.b.com'
+  const netDomain = '1234567.b.com'
 
   event.headers.append('X-Dweb-Pubsub', `${manifest.id}`)
   event.headers.append('X-Dweb-Pubsub-App', `${appMMID}`)
@@ -41,6 +46,14 @@ app.use(async (event) => {
 
   return resp
 })
+
+const isPubSubReq = (method: string, pathname: string) => {
+  return (
+    (pathname.startsWith(`${prefixPath}/sub`) ||
+      pathname.startsWith(`${prefixPath}/pub`)) &&
+    method === 'POST'
+  )
+}
 
 type EventData = {
   headers: {
